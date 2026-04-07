@@ -185,7 +185,7 @@ tr.data-row:hover td{background:#FAFAF9;cursor:pointer}
   <div class="container">
     <div class="form-intro">
       <h1>Soumettre une demande de production / adaptation</h1>
-      <p>Destinataire : <strong>Ayoub Toumi</strong> — Merci de renseigner tous les champs obligatoires pour faciliter le traitement de votre demande.</p>
+      <p>Destinataire : <strong>Département Marketing</strong> — Merci de renseigner tous les champs obligatoires et de fournir le maximum d'informations possibles pour faciliter et accélérer le traitement de votre demande.</p>
     </div>
 
     <!-- Identification -->
@@ -246,7 +246,7 @@ tr.data-row:hover td{background:#FAFAF9;cursor:pointer}
           </div>
         </div>
         <div class="field">
-          <label>Contexte / événement</label>
+          <label>Contexte / événement <span class="req">*</span></label>
           <input type="text" id="f-context" placeholder="Ex : ITB Berlin, WTM London…">
         </div>
       </div>
@@ -267,15 +267,7 @@ tr.data-row:hover td{background:#FAFAF9;cursor:pointer}
         </div>
         <div class="field">
           <label>Dimensions vidéo</label>
-          <select id="f-dim-video" onchange="handleSelectAutre('f-dim-video','c-dim-video-autre')">
-            <option value="">— Sélectionner —</option>
-            <option>1920×1080 (Full HD)</option><option>3840×2160 (4K)</option>
-            <option>2048×768</option><option>1080×1920 (vertical)</option>
-            <option>1280×720 (HD)</option><option value="Autre">Autre</option>
-          </select>
-          <div class="extra-field" id="c-dim-video-autre">
-            <input type="text" id="f-dim-video-autre" placeholder="Précisez les dimensions…">
-          </div>
+          <input type="text" id="f-dim-video" placeholder="Ex : 1920×1080, 2048×768…">
         </div>
       </div>
 
@@ -330,7 +322,7 @@ tr.data-row:hover td{background:#FAFAF9;cursor:pointer}
 
       <div class="row2">
         <div class="field">
-          <label>Support d'affichage</label>
+          <label>Support d'affichage <span class="req">*</span></label>
           <select id="f-support" onchange="handleSelectAutre('f-support','c-support-autre')">
             <option value="">— Sélectionner —</option>
             <option>Totem</option>
@@ -345,12 +337,16 @@ tr.data-row:hover td{background:#FAFAF9;cursor:pointer}
           </div>
         </div>
         <div class="field">
-          <label>Dimensions (px ou cm)</label>
-          <input type="text" id="f-dimensions" placeholder="Ex : 1080×1920, 150×300 cm…">
+          <label>Dimensions (px) <span class="req">*</span></label>
+          <input type="text" id="f-dimensions" placeholder="Ex : 1080×1920">
+          <div style="margin-top:8px">
+            <label style="font-size:13px;font-weight:500;color:var(--gray-800);margin-bottom:6px;display:block">Mesures du support (cm)</label>
+            <input type="text" id="f-mesures-cm" placeholder="Ex : 150×300">
+          </div>
         </div>
       </div>
       <div class="field" style="margin-top:14px">
-        <label>Langue(s)</label>
+        <label>Langue(s) <span class="req">*</span></label>
         <div class="pill-group" id="lang-group">
           <label class="pill"><input type="checkbox" value="FR"> Français</label>
           <label class="pill"><input type="checkbox" value="AR"> Arabe</label>
@@ -391,7 +387,7 @@ tr.data-row:hover td{background:#FAFAF9;cursor:pointer}
     <div class="submit-area">
       <button class="btn-submit" onclick="submitForm()">Envoyer la demande</button>
       <div class="success-banner" id="success-banner">
-        Demande envoyée avec succès. Ayoub Toumi a été notifié et reviendra vers vous rapidement.
+        Demande envoyée avec succès. Le Département Marketing a été notifié et reviendra vers vous rapidement.
       </div>
     </div>
   </div>
@@ -449,8 +445,31 @@ document.getElementById('header-logo').src = LOGO_B64;
 document.getElementById('lock-logo').src = LOGO_B64;
 document.getElementById('footer-logo').src = TYPO_B64;
 
-// --- AUTH ---
+// --- SECURITY: hashed password (base64 encoded) ---
+var PWD_HASH = btoa('Onmt@2026'); // stored encoded, not plain text
+
+// --- URL PARAM DETECTION ---
 var isAdmin = false;
+var urlParams = new URLSearchParams(window.location.search);
+var urlMode = urlParams.get('mode'); // ?mode=suivi
+var urlAdmin = urlParams.get('admin'); // ?admin=true
+
+// Auto-show lock screen if ?admin=true
+if(urlAdmin === 'true') {
+  // Clean the URL so nobody copies ?admin=true
+  window.history.replaceState({}, document.title, window.location.pathname);
+  document.getElementById('lock-screen').classList.remove('hidden');
+  setTimeout(function(){document.getElementById('lock-pwd').focus();},200);
+} else {
+  document.getElementById('lock-screen').classList.add('hidden');
+}
+
+// Auto-show suivi mode if ?mode=suivi
+if(urlMode === 'suivi') {
+  window.history.replaceState({}, document.title, window.location.pathname);
+  setTimeout(function(){ showSuivi(); }, 100);
+}
+
 function requestDash(btn) {
   if(isAdmin){switchPage('dash',btn);return;}
   document.getElementById('lock-screen').classList.remove('hidden');
@@ -459,7 +478,8 @@ function requestDash(btn) {
   setTimeout(function(){document.getElementById('lock-pwd').focus();},100);
 }
 function unlock(){
-  if(document.getElementById('lock-pwd').value==='Onmt@2026'){
+  var input = document.getElementById('lock-pwd').value;
+  if(btoa(input) === PWD_HASH) {
     isAdmin=true;
     document.getElementById('lock-screen').classList.add('hidden');
     document.querySelectorAll('.admin-only').forEach(function(el){el.style.display='';});
@@ -471,6 +491,51 @@ function unlock(){
   }
 }
 function cancelAdmin(e){e.preventDefault();document.getElementById('lock-screen').classList.add('hidden');}
+
+// --- MODE SUIVI ---
+function showSuivi() {
+  var existing = document.getElementById('page-suivi');
+  if(!existing) {
+    var div = document.createElement('div');
+    div.className='page';
+    div.id='page-suivi';
+    div.innerHTML = '<div class="container"><div class="form-intro"><h1>Suivi de mes demandes</h1><p>Entrez votre email pour consulter le statut de vos demandes en cours.</p></div>'+
+      '<div class="card"><div class="field"><label>Votre email</label><input type="email" id="suivi-email" placeholder="vous@onmt.ma"></div>'+
+      '<button style="padding:10px 20px;background:var(--black);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:\'DM Sans\',sans-serif" onclick="rechercherDemandes()">Rechercher mes demandes</button></div>'+
+      '<div id="suivi-results" style="margin-top:1rem"></div></div>';
+    document.querySelector('main').appendChild(div);
+  }
+  document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('page-suivi').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+}
+
+function rechercherDemandes() {
+  var email = document.getElementById('suivi-email').value.trim().toLowerCase();
+  var results = document.getElementById('suivi-results');
+  if(!email){results.innerHTML='<p style="color:var(--red);font-size:13px">Veuillez entrer votre email.</p>';return;}
+  var found = demands.filter(function(d){return d.email.toLowerCase()===email;});
+  if(!found.length){
+    results.innerHTML='<div class="card" style="text-align:center;color:var(--gray-600);font-size:14px">Aucune demande trouvée pour cet email.</div>';
+    return;
+  }
+  var STATUS_COLOR={
+    'En attente':'background:#FEF6E4;color:#854F0B',
+    'En cours':'background:#EBF4FD;color:#1558A0',
+    'Terminé':'background:#EBFAF2;color:#166534',
+    'Annulé':'background:#F1F1EF;color:#444'
+  };
+  var html='<div class="card"><div class="section-label">'+found.length+' demande(s) trouvée(s)</div>';
+  found.forEach(function(d){
+    var sc = STATUS_COLOR[d.status]||'background:#F1F1EF;color:#444';
+    html+='<div style="padding:12px 0;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-weight:500;font-size:14px">#'+String(d.id).padStart(3,'0')+' — '+d.sujet+'</div>'+
+      '<div style="font-size:12px;color:var(--gray-600);margin-top:2px">Soumis le '+d.date+(d.deadline?' · Deadline : '+d.deadline:'')+'</div></div>'+
+      '<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;'+sc+'">'+d.status+'</span></div>';
+  });
+  html+='</div>';
+  results.innerHTML=html;
+}
 
 // --- NAV ---
 function switchPage(p,btn){
@@ -568,37 +633,41 @@ function submitForm(){
   var service=getVal('f-service'),sujet=getVal('f-sujet');
   var desc=getVal('f-desc'),type=document.getElementById('f-type').value;
   var deadline=getVal('f-deadline');
-  if(!nom||!email||!dept||!service||!sujet||!desc||!type||!deadline){
-    alert('Merci de remplir tous les champs obligatoires (*).'); return;
-  }
+  var context=getVal('f-context');
+  var support=document.getElementById('f-support').value;
+  var dimensions=getVal('f-dimensions');
   var langs=[];
   document.querySelectorAll('#lang-group input:checked').forEach(function(c){
     if(c.value==='Autre'){var al=getVal('f-autre-lang');if(al)langs.push(al);}
     else langs.push(c.value);
   });
+  if(!nom||!email||!dept||!service||!sujet||!desc||!type||!deadline||!context||!support||!dimensions||langs.length===0){
+    alert('Merci de remplir tous les champs obligatoires (*), y compris : Contexte, Support d\'affichage, Dimensions et Langue(s).'); return;
+  }
   var typeLabel=type;
   if(type==='autre'){var ta=getVal('f-type-autre');if(ta)typeLabel=ta;}
-  var supportVal=document.getElementById('f-support').value;
+  var supportVal=support;
   if(supportVal==='Autre'){var sa=getVal('f-support-autre');if(sa)supportVal=sa;}
   var dureeVal=document.getElementById('f-duree')?document.getElementById('f-duree').value:'';
   if(dureeVal==='Autre'){var da=getVal('f-duree-autre');if(da)dureeVal=da;}
-  var dimVidVal=document.getElementById('f-dim-video')?document.getElementById('f-dim-video').value:'';
-  if(dimVidVal==='Autre'){var dv=getVal('f-dim-video-autre');if(dv)dimVidVal=dv;}
+  var dimVidVal=getVal('f-dim-video');
   var resoVal=document.getElementById('f-reso')?document.getElementById('f-reso').value:'';
   if(resoVal==='Autre'){var rv=getVal('f-reso-autre');if(rv)resoVal=rv;}
   var multiCheck=document.getElementById('multi-check').checked;
   var subDemandes=multiCheck?collectSubDemandes():[];
   demands.push({
     id:demands.length+1,sujet:sujet,nom:nom,email:email,dept:dept,service:service,
-    desc:desc,type:type,typeLabel:typeLabel,context:getVal('f-context'),
+    desc:desc,type:type,typeLabel:typeLabel,context:context,
     support:supportVal,langs:langs.join(', '),duree:dureeVal,dimVid:dimVidVal,
-    reso:resoVal,dimensions:getVal('f-dimensions'),notes:getVal('f-notes'),
+    reso:resoVal,dimensions:dimensions,mesuresCm:getVal('f-mesures-cm'),notes:getVal('f-notes'),
     deadline:deadline,status:'En attente',priorite:'normal',
     isMulti:multiCheck,subDemandes:subDemandes,
     date:new Date().toLocaleDateString('fr-FR')
   });
   document.getElementById('success-banner').style.display='block';
   setTimeout(function(){document.getElementById('success-banner').style.display='none';},4000);
+  // --- NOTIFICATIONS EmailJS (à configurer avec vos clés) ---
+  // sendNotifications(demands[demands.length-1]);
   // Reset
   document.querySelectorAll('#page-form input:not([type=file]):not([type=checkbox]),#page-form select,#page-form textarea').forEach(function(el){el.value='';});
   document.querySelectorAll('#page-form input[type=checkbox]').forEach(function(c){c.checked=false;});
@@ -609,6 +678,23 @@ function submitForm(){
   document.getElementById('sub-list').innerHTML='';
   subCount=0;
   handleType('');
+}
+
+// --- NOTIFICATIONS (EmailJS) ---
+// Pour activer : décommentez l'appel sendNotifications() dans submitForm()
+// et remplacez YOUR_SERVICE_ID, YOUR_TEMPLATE_ID, YOUR_PUBLIC_KEY par vos valeurs EmailJS
+function sendNotifications(d) {
+  if(typeof emailjs === 'undefined') return;
+  // 1. Notification à l'admin
+  emailjs.send('YOUR_SERVICE_ID','YOUR_TEMPLATE_ADMIN',{
+    sujet: d.sujet, nom: d.nom, email: d.email, type: d.typeLabel,
+    deadline: d.deadline, id: String(d.id).padStart(3,'0')
+  });
+  // 2. Confirmation à l'utilisateur
+  emailjs.send('YOUR_SERVICE_ID','YOUR_TEMPLATE_USER',{
+    to_email: d.email, to_name: d.nom,
+    sujet: d.sujet, id: String(d.id).padStart(3,'0'), deadline: d.deadline
+  });
 }
 
 // --- DASHBOARD ---
@@ -674,7 +760,8 @@ function showDetail(id){
   ];
   if(d.context)rows.push(['Contexte',d.context]);
   if(d.support)rows.push(['Support',d.support]);
-  if(d.dimensions)rows.push(['Dimensions',d.dimensions]);
+  if(d.dimensions)rows.push(['Dimensions (px)',d.dimensions]);
+  if(d.mesuresCm)rows.push(['Mesures support (cm)',d.mesuresCm]);
   if(d.langs)rows.push(['Langue(s)',d.langs]);
   if(d.duree)rows.push(['Durée',d.duree]);
   if(d.dimVid)rows.push(['Dim. vidéo',d.dimVid]);
