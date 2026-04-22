@@ -473,13 +473,19 @@ function cancelAdmin(e) {
 }
 
 // --- NAVIGATION ---
-function switchPage(p, btn) {
-  document.querySelectorAll('.page').forEach(function(el){ el.classList.remove('active'); });
-  document.getElementById('page-' + p).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
-  btn.classList.add('active');
-  if(p === 'dash') renderDash();
+function switchPage(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  // ✅ ALWAYS load data when dashboard is shown
+  if (page === 'dash') {
+    loadDashboardData();
+  }
 }
+``
 
 // --- MODE SUIVI ---
 function showSuivi() {
