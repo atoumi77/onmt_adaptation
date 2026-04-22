@@ -450,12 +450,10 @@ var isAdmin = false;
 
 // --- AUTH ---
 function requestDash(btn) {
-  if(isAdmin){ switchPage('dash', btn); return; }
-  document.getElementById('lock-screen').classList.remove('hidden');
-  document.getElementById('lock-pwd').value = '';
-  document.getElementById('lock-err').style.display = 'none';
-  setTimeout(function(){ document.getElementById('lock-pwd').focus(); }, 100);
+  switchPage('dash', btn);
+  loadDashboardData(); // ✅ load Google Sheet data
 }
+``
 function unlock() {
   var input = document.getElementById('lock-pwd').value;
   if(btoa(input) === PWD_HASH) {
@@ -673,6 +671,31 @@ function sendNotifications(d) {
     to_email: d.email, to_name: d.nom,
     sujet: d.sujet, id: String(d.id).padStart(3,'0'), deadline: d.deadline
   });
+}
+// 🔗 Admin API (Google Apps Script)
+const DASH_API = "https://script.google.com/macros/s/AKfycby30rWPEK3DzluNDKE3zxH-rwPgMEGuTOTr6mcYzs8mkqU0gc-y1d1j-bVJ7Emy7RGsYQ/exec";
+
+// All dashboard data lives here
+var demands = [];
+
+// Load demands from Google Sheets
+function loadDashboardData() {
+  fetch(DASH_API)
+    .then(res => res.json())
+    .then(data => {
+      demands = data;
+
+      // Defaults (if not stored in sheet)
+      demands.forEach(d => {
+        if (!d.priorite) d.priorite = 'normal';
+        if (!d.status) d.status = 'En attente';
+      });
+
+      renderDash(); // ✅ this now works
+    })
+    .catch(err => {
+      console.error('Dashboard API error:', err);
+    });
 }
 
 // --- DASHBOARD ---
