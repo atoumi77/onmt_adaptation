@@ -488,7 +488,7 @@ function switchPage(p, btn) {
   document.getElementById('page-' + p).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
-  if(p === 'dash') loadFromSheets();
+  if(p === 'dash') renderDash();
 }
 
 // --- MODE SUIVI ---
@@ -604,26 +604,7 @@ function collectSubDemandes() {
 // --- SUBMIT ---
 var demands = [];
 var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxXYW-RHdBK-EvAtJo4DZNDI312O_1yuZwCQDpfmg0JQoFDjteXSaU1KOuM99vzlYRKdw/exec';
-
-function loadFromSheets() {
-  fetch(SHEETS_URL)
-    .then(function(r){ return r.json(); })
-    .then(function(rows){
-      demands = rows.map(function(r){
-        return {
-          id: r[0], date: r[1], nom: r[2], email: r[3],
-          dept: r[4], service: r[5], sujet: r[6],
-          type: r[7], typeLabel: r[7], context: r[8], support: r[9],
-          dimensions: r[10], mesuresCm: r[11],
-          langs: r[12], deadline: r[13], desc: r[14],
-          notes: r[15], status: r[16] || 'En attente',
-          priorite: 'normal', isMulti: false, subDemandes: []
-        };
-      });
-      renderDash();
-    })
-    .catch(function(e){ console.warn('Load error:', e); });
-}
+function getVal(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
 function submitForm() {
   var nom = getVal('f-nom'), email = getVal('f-email'), dept = getVal('f-dept');
