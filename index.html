@@ -425,15 +425,7 @@ var TYPO_B64 = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0
 document.getElementById('header-logo').src = LOGO_B64;
 document.getElementById('lock-logo').src = LOGO_B64;
 document.getElementById('footer-logo').src = TYPO_B64;
-function saveToSheets(d) {
-  if(!SHEETS_URL) return;
-  fetch(SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(d)
-  }).catch(function(e){ console.warn('Sheets:', e); });
-}
+
 // --- EMAILJS INIT ---
 // Remplacez YOUR_PUBLIC_KEY par votre clé publique EmailJS
 (function(){ if(typeof emailjs !== 'undefined') emailjs.init('ls3CYNJkamy7_vDKV'); })();
@@ -603,7 +595,6 @@ function collectSubDemandes() {
 
 // --- SUBMIT ---
 var demands = [];
-var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxXYW-RHdBK-EvAtJo4DZNDI312O_1yuZwCQDpfmg0JQoFDjteXSaU1KOuM99vzlYRKdw/exec';
 function getVal(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
 function submitForm() {
@@ -642,12 +633,13 @@ function submitForm() {
     date: new Date().toLocaleDateString('fr-FR')
   };
   demands.push(newDemand);
-  saveToSheets(newDemand);
+
   // Notification EmailJS (décommentez après configuration)
   sendNotifications(newDemand);
 
   document.getElementById('success-banner').style.display = 'block';
   setTimeout(function(){ document.getElementById('success-banner').style.display = 'none'; }, 4000);
+
   // Reset form
   document.querySelectorAll('#page-form input:not([type=file]):not([type=checkbox]),#page-form select,#page-form textarea').forEach(function(el){ el.value = ''; });
   document.querySelectorAll('#page-form input[type=checkbox]').forEach(function(c){ c.checked = false; });
