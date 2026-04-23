@@ -646,14 +646,14 @@ function submitForm() {
   };
 
   // ✅ ENVOI VERS APPS SCRIPT (écrit dans la Google Sheet)
-  fetch('https://script.google.com/macros/s/TON_SCRIPT_ID/exec', {
+  fetch('https://script.google.com/macros/s/AKfycby30rWPEK3DzluNDKE3zxH-rwPgMEGuTOTr6mcYzs8mkqU0gc-y1d1j-bVJ7Emy7RGsYQ/exec', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   })
   .then(() => {
     // ✅ Ensuite seulement : email
-    emailjs.send('TON_SERVICE_ID', 'TON_TEMPLATE_ID', payload);
+    emailjs.send('service_gxfkhp6', 'template_xb7ntmn', payload);
 
     document.getElementById('success-banner').style.display = 'block';
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
