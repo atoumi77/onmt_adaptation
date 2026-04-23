@@ -608,15 +608,61 @@ function submitForm() {
   var deadline = getVal('f-deadline'), context = getVal('f-context');
   var support = document.getElementById('f-support').value;
   var dimensions = getVal('f-dimensions');
+
   var langs = [];
   document.querySelectorAll('#lang-group input:checked').forEach(function(c){
-    if(c.value === 'Autre'){ var al = getVal('f-autre-lang'); if(al) langs.push(al); }
-    else langs.push(c.value);
+    if(c.value === 'Autre'){
+      var al = getVal('f-autre-lang');
+      if(al) langs.push(al);
+    } else {
+      langs.push(c.value);
+    }
   });
-  if(!nom||!email||!dept||!service||!sujet||!desc||!type||!deadline||!context||!support||!dimensions||langs.length===0){
-    alert('Merci de remplir tous les champs obligatoires (*), y compris : Contexte, Support, Dimensions et Langue(s).');
+
+  if(!nom || !email || !dept || !service || !sujet || !desc || !type || !deadline || !context || !support || !dimensions || langs.length===0){
+    alert('Merci de remplir tous les champs obligatoires (*).');
     return;
   }
+
+  // ✅ Objet à envoyer à Google Sheets
+  var payload = {
+    id: Date.now(),                 // ID unique
+    date: new Date().toISOString(),
+    nom: nom,
+    email: email,
+    dept: dept,
+    service: service,
+    sujet: sujet,
+    type: type,
+    context: context,
+    support: support,
+    dimensions: dimensions,
+    mesuresCm: getVal('f-mesures-cm'),
+    langs: langs.join(', '),
+    deadline: deadline,
+    desc: desc,
+    notes: getVal('f-notes'),
+    status: 'En attente'
+  };
+
+  // ✅ ENVOI VERS APPS SCRIPT (écrit dans la Google Sheet)
+  fetch('https://script.google.com/macros/s/TON_SCRIPT_ID/exec', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(() => {
+    // ✅ Ensuite seulement : email
+    emailjs.send('TON_SERVICE_ID', 'TON_TEMPLATE_ID', payload);
+
+    document.getElementById('success-banner').style.display = 'block';
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  })
+  .catch(err => {
+    alert('Erreur lors de l’enregistrement de la demande.');
+    console.error(err);
+  });
+}
   var typeLabel = type;
   if(type === 'autre'){ var ta = getVal('f-type-autre'); if(ta) typeLabel = ta; }
   var supportVal = support === 'Autre' ? (getVal('f-support-autre') || support) : support;
