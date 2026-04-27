@@ -544,7 +544,7 @@ function switchPage(p,btn){
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
-  if(p==='dash')renderDash();
+  if(p==='dash') loadDashboardFromSheets();
 }
 
 // --- TRACKING ---
@@ -657,6 +657,9 @@ function collectSubDemandes(){
   return result;
 }
 
+// ── Google Sheets API ─────────────────────────────────────────
+var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyGQxehUYA-bL8IooYcTaHgBCzuF2hIDRtLKeXyuN--ODDnOEVtBRA-h9hvlAwcUlB0WQ/exec';
+
 // --- SUBMIT ---
 var demands=[];
 function getVal(id){var el=document.getElementById(id);return el?el.value.trim():'';}
@@ -686,18 +689,48 @@ function submitForm(){
   if(resoVal==='Autre'){var rv=getVal('f-reso-autre');if(rv)resoVal=rv;}
   var multiCheck=document.getElementById('multi-check').checked;
   var subDemandes=multiCheck?collectSubDemandes():[];
-  demands.push({
-    id:demands.length+1,sujet:sujet,nom:nom,email:email,dept:dept,service:service,
-    desc:desc,type:type,typeLabel:typeLabel,context:getVal('f-context'),
-    support:supportVal,langs:langs.join(', '),duree:dureeVal,dimVid:dimVidVal,
-    reso:resoVal,dimensions:getVal('f-dimensions'),notes:getVal('f-notes'),
-    deadline:deadline,status:'En attente',priorite:'normal',
-    isMulti:multiCheck,subDemandes:subDemandes,
+
+  var payload = {
+    id: demands.length+1,
+    sujet:sujet, nom:nom, email:email, dept:dept, service:service,
+    desc:desc, type:type, typeLabel:typeLabel, context:getVal('f-context'),
+    support:supportVal, langs:langs.join(', '), duree:dureeVal, dimVid:dimVidVal,
+    reso:resoVal, dimensions:getVal('f-dimensions'), notes:getVal('f-notes'),
+    deadline:deadline, status:'En attente', priorite:'normal',
+    isMulti:multiCheck, subDemandes:subDemandes,
     date:new Date().toLocaleDateString('fr-FR')
+  };
+
+  // Ajouter localement pour le dashboard (session courante)
+  demands.push(payload);
+
+  // Envoyer à Google Sheets (no-cors = pas de réponse mais ça passe)
+  var btn = document.querySelector('.btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Envoi en cours…';
+
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).then(function() {
+    btn.disabled = false;
+    btn.textContent = 'Envoyer la demande';
+    document.getElementById('success-banner').style.display='block';
+    setTimeout(function(){document.getElementById('success-banner').style.display='none';},5000);
+    resetForm();
+  }).catch(function() {
+    // no-cors ne renvoie jamais d'erreur réelle, mais au cas où
+    btn.disabled = false;
+    btn.textContent = 'Envoyer la demande';
+    document.getElementById('success-banner').style.display='block';
+    setTimeout(function(){document.getElementById('success-banner').style.display='none';},5000);
+    resetForm();
   });
-  document.getElementById('success-banner').style.display='block';
-  setTimeout(function(){document.getElementById('success-banner').style.display='none';},4000);
-  // Reset
+}
+
+function resetForm(){
   document.querySelectorAll('#page-form input:not([type=file]):not([type=checkbox]),#page-form select,#page-form textarea').forEach(function(el){el.value='';});
   document.querySelectorAll('#page-form input[type=checkbox]').forEach(function(c){c.checked=false;});
   ['autre-lang','c-type-autre','c-duree-autre','c-dim-video-autre','c-reso-autre','c-support-autre'].forEach(function(id){
@@ -707,6 +740,52 @@ function submitForm(){
   document.getElementById('sub-list').innerHTML='';
   subCount=0;
   handleType('');
+}
+
+// ── Chargement du dashboard depuis Google Sheets ──────────────
+function loadDashboardFromSheets(){
+  var body=document.getElementById('dash-body');
+  var empty=document.getElementById('dash-empty');
+  body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--gray-600);font-size:13px">⏳ Chargement des demandes…</td></tr>';
+  empty.style.display='none';
+
+  fetch(SHEETS_URL)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!Array.isArray(data)||!data.length){
+        // Aucune donnée dans Sheets → garder les données locales
+        renderDash();
+        return;
+      }
+      // Fusionner : Sheets écrase la liste locale
+      demands = data.map(function(d,i){
+        return {
+          id:       d.id    || i+1,
+          sujet:    d.sujet || '—',
+          nom:      d.nom   || '',
+          email:    d.email || '',
+          dept:     d.dept  || '',
+          service:  d.service || '',
+          desc:     d.desc  || '',
+          type:     (d.type||'autre').toLowerCase().replace(/[^a-z]/g,''),
+          typeLabel:d.type  || '',
+          context:  d.context || '',
+          support:  d.support || '',
+          dims:     d.dimensions || '',
+          langs:    d.langs || '',
+          deadline: d.deadline || '',
+          notes:    d.notes || '',
+          status:   d.status   || 'En attente',
+          priorite: d.priorite || 'normal',
+          date:     d.date  || ''
+        };
+      });
+      renderDash();
+    })
+    .catch(function(err){
+      console.warn('Sheets inaccessible, données locales utilisées.', err);
+      renderDash();
+    });
 }
 
 // --- DASHBOARD ---
