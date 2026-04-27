@@ -6,6 +6,7 @@
 <title>ONMT — Demandes de production</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -468,7 +469,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
     <div class="submit-area">
       <button class="btn-submit" onclick="submitForm()">Envoyer la demande</button>
       <div class="success-banner" id="success-banner">
-        Demande envoyée avec succès. Ayoub Toumi a été notifié et reviendra vers vous rapidement.
+        ✅ Demande envoyée avec succès. Un email de confirmation vous a été envoyé, et Ayoub Toumi a été notifié.
       </div>
     </div>
   </div>
@@ -741,6 +742,15 @@ function collectSubDemandes(){
 // ── Google Sheets API ─────────────────────────────────────────
 var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyGQxehUYA-bL8IooYcTaHgBCzuF2hIDRtLKeXyuN--ODDnOEVtBRA-h9hvlAwcUlB0WQ/exec';
 
+// ── EmailJS ───────────────────────────────────────────────────
+var EJS = {
+  publicKey:       'xza8qKJVUOy3L9MFd',
+  serviceId:       'service_u2khr9v',
+  templateAdmin:   'template_832bwz2',   // → vous (nouvelle demande)
+  templateUser:    'template_ry2inms'    // → demandeur (confirmation)
+};
+emailjs.init({ publicKey: EJS.publicKey });
+
 // --- SUBMIT ---
 var demands=[];
 function getVal(id){var el=document.getElementById(id);return el?el.value.trim():'';}
@@ -796,13 +806,32 @@ function submitForm(){
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   }).then(function() {
+    // ── Emails ────────────────────────────────────────────────
+    var emailParams = {
+      id:       String(payload.id).padStart(3,'0'),
+      sujet:    payload.sujet,
+      nom:      payload.nom,
+      email:    payload.email,
+      dept:     payload.dept,
+      service:  payload.service,
+      type:     payload.typeLabel || payload.type,
+      deadline: payload.deadline,
+      desc:     payload.desc,
+      notes:    payload.notes || ''
+    };
+    // Email 1 → admin (vous)
+    emailjs.send(EJS.serviceId, EJS.templateAdmin, emailParams)
+      .catch(function(e){ console.warn('Email admin:', e); });
+    // Email 2 → demandeur
+    emailjs.send(EJS.serviceId, EJS.templateUser, emailParams)
+      .catch(function(e){ console.warn('Email user:', e); });
+
     btn.disabled = false;
     btn.textContent = 'Envoyer la demande';
     document.getElementById('success-banner').style.display='block';
     setTimeout(function(){document.getElementById('success-banner').style.display='none';},5000);
     resetForm();
   }).catch(function() {
-    // no-cors ne renvoie jamais d'erreur réelle, mais au cas où
     btn.disabled = false;
     btn.textContent = 'Envoyer la demande';
     document.getElementById('success-banner').style.display='block';
