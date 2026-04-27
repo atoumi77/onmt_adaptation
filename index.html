@@ -852,58 +852,82 @@ function resetForm(){
   handleType('');
 }
 
-// ── Chargement du dashboard depuis Google Sheets ──────────────
+// ── Chargement du dashboard via JSONP (contourne les CORS) ───
 function loadDashboardFromSheets(){
-  var body=document.getElementById('dash-body');
-  var empty=document.getElementById('dash-empty');
-  body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--gray-600);font-size:13px">⏳ Chargement des demandes…</td></tr>';
-  empty.style.display='none';
+  var body = document.getElementById('demand-list');
+  var empty = document.getElementById('dash-empty');
+  if(body) body.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--gray-600);font-size:13px">⏳ Chargement des demandes depuis Google Sheets…</div>';
+  if(empty) empty.style.display = 'none';
 
-  fetch(SHEETS_URL)
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(!Array.isArray(data)||!data.length){
-        // Aucune donnée dans Sheets → garder les données locales
-        renderDash();
-        return;
-      }
-      // Fusionner : Sheets écrase la liste locale
-      demands = data.map(function(d,i){
-        // Normalise le type pour le matching des filtres
-        var rawType = String(d.type||'autre').toLowerCase()
-          .replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e')
-          .replace(/visuel kv/g,'visuelkv')
-          .replace(/photo raw/g,'photo')
-          .replace(/bannière/g,'banniere').replace(/banniere/g,'banniere')
-          .replace(/vidéo/g,'video').replace(/video/g,'video')
-          .replace(/\s+/g,'');
-        return {
-          id:       d.id && String(d.id)!=='1' ? d.id : (i+1), // fix IDs tous à 1
-          sujet:    d.sujet || '—',
-          nom:      d.nom   || '',
-          email:    d.email || '',
-          dept:     d.dept  || '',
-          service:  d.service || '',
-          desc:     d.desc  || '',
-          type:     rawType,
-          typeLabel:d.type  || '',
-          context:  d.context || '',
-          support:  d.support || '',
-          dimensions: d.dimensions || '',
-          langs:    d.langs || '',
-          deadline: d.deadline || '',
-          notes:    d.notes || '',
-          status:   d.status   || 'En attente',
-          priorite: d.priorite || 'normal',
-          date:     d.date  || ''
-        };
-      });
+  // Callback unique pour éviter les conflits
+  var cbName = 'sheetsCb_' + Date.now();
+
+  window[cbName] = function(data) {
+    // Nettoyer le script tag et le callback
+    var s = document.getElementById('jsonp-script');
+    if(s) s.parentNode.removeChild(s);
+    delete window[cbName];
+
+    if(!Array.isArray(data) || !data.length){
+      // Aucune donnée dans Sheets → garder les données locales
       renderDash();
-    })
-    .catch(function(err){
-      console.warn('Sheets inaccessible, données locales utilisées.', err);
-      renderDash();
+      return;
+    }
+
+    demands = data.map(function(d, i){
+      var rawType = String(d.type||'autre').toLowerCase()
+        .replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e')
+        .replace(/visuel kv/g,'visuelkv')
+        .replace(/photo raw/g,'photo')
+        .replace(/bannière/g,'banniere').replace(/banniere/g,'banniere')
+        .replace(/vidéo/g,'video').replace(/video/g,'video')
+        .replace(/\s+/g,'');
+      var id = d.id && String(d.id) !== '' && String(d.id) !== '0' ? Number(d.id) : (i+1);
+      return {
+        id:         id,
+        sujet:      d.sujet    || '—',
+        nom:        d.nom      || '',
+        email:      d.email    || '',
+        dept:       d.dept     || '',
+        service:    d.service  || '',
+        desc:       d.desc     || '',
+        type:       rawType,
+        typeLabel:  d.type     || '',
+        context:    d.context  || '',
+        support:    d.support  || '',
+        dimensions: d.dimensions || '',
+        langs:      d.langs    || '',
+        deadline:   d.deadline || '',
+        notes:      d.notes    || '',
+        status:     d.status   || 'En attente',
+        priorite:   d.priorite || 'normal',
+        date:       d.date     || ''
+      };
     });
+
+    renderDash();
+  };
+
+  // Timeout si Apps Script ne répond pas
+  var timeout = setTimeout(function(){
+    if(window[cbName]){
+      delete window[cbName];
+      console.warn('Sheets timeout — données locales utilisées');
+      renderDash();
+    }
+  }, 8000);
+
+  // Injecter le script JSONP
+  var script = document.createElement('script');
+  script.id = 'jsonp-script';
+  script.src = SHEETS_URL + '?callback=' + cbName + '&t=' + Date.now();
+  script.onerror = function(){
+    clearTimeout(timeout);
+    delete window[cbName];
+    console.warn('Sheets inaccessible — données locales utilisées');
+    renderDash();
+  };
+  document.head.appendChild(script);
 }
 
 // --- DASHBOARD ---
