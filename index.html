@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- Web3Forms : pièces jointes gratuites -->
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -206,7 +207,16 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
 .empty-state .ei{font-size:36px;margin-bottom:12px;display:block}
 
 
-/* TRACKING MODE */
+/* CONFIRMATION PAGE */
+.confirm-box{max-width:520px;margin:0 auto;text-align:center;padding:3rem 2rem}
+.confirm-logo{width:100px;height:100px;border-radius:50%;object-fit:contain;background:#fff;padding:10px;box-shadow:0 4px 24px rgba(0,0,0,.1);margin-bottom:2rem}
+.confirm-icon{font-size:52px;margin-bottom:1rem}
+.confirm-box h1{font-size:26px;font-weight:700;color:var(--black);margin-bottom:10px}
+.confirm-box p{font-size:15px;color:var(--gray-600);line-height:1.7;margin-bottom:1.5rem}
+.confirm-id{display:inline-block;background:var(--gray-100);border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 22px;font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--black);margin-bottom:2rem}
+.confirm-back{display:inline-block;padding:12px 28px;background:var(--black);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;transition:opacity .15s}
+.confirm-back:hover{opacity:.85}
+
 .nav-btn.tracking-only{display:none}
 .track-box{max-width:480px;margin:0 auto}
 .track-box h1{font-size:22px;font-weight:600;margin-bottom:6px}
@@ -284,11 +294,11 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
       <div class="row2">
         <div class="field">
           <label>Numéro de téléphone <span class="req">*</span></label>
-          <input type="tel" id="f-tel" placeholder="ex : 06 12 34 56 78">
+          <input type="tel" id="f-tel">
         </div>
         <div class="field">
           <label>Intitulé du poste <span class="req">*</span></label>
-          <input type="text" id="f-service" placeholder="ex : Cadre, Chef de service, Directeur…">
+          <input type="text" id="f-service" placeholder="ex : Cadre, Chef de service, Responsable…">
         </div>
       </div>
       <div class="row2">
@@ -465,7 +475,11 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
       <div class="field">
         <label>Fichiers joints <span style="font-weight:400;color:var(--gray-600)">(optionnel)</span></label>
         <div class="file-area" id="file-drop-area">
-          <input type="file" id="f-files" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.ai,.eps,.mp4,.zip" onchange="handleFileChange(this)">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--gray-600);font-size:13px">
+            <span style="padding:6px 14px;background:var(--gray-100);border:1px solid var(--gray-300);border-radius:var(--radius);font-size:12px;font-weight:500;white-space:nowrap;color:var(--black)">Choisir des fichiers</span>
+            <span id="file-label-text">Aucun fichier sélectionné</span>
+          </label>
+          <input type="file" id="f-files" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.ai,.eps,.mp4,.zip" onchange="handleFileChange(this)" style="position:absolute;opacity:0;width:1px;height:1px;overflow:hidden">
         </div>
         <div id="file-confirm" style="display:none;margin-top:8px;padding:8px 12px;background:#EBFAF2;border:1px solid #A3D9B1;border-radius:var(--radius);font-size:12px;color:#166534">
           ✅ <span id="file-confirm-text"></span>
@@ -573,6 +587,20 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
     </div>
   </div>
 </div>
+<!-- CONFIRMATION PAGE -->
+<div class="page" id="page-confirm">
+  <div class="container">
+    <div class="confirm-box">
+      <img class="confirm-logo" id="confirm-logo" src="" alt="ONMT">
+      <div class="confirm-icon">✅</div>
+      <h1>Demande envoyée avec succès !</h1>
+      <p>Votre demande a bien été enregistrée.<br>Vous recevrez un email de confirmation sous peu.<br>Le Département Marketing reviendra vers vous rapidement.</p>
+      <div class="confirm-id" id="confirm-ref-display">#001</div>
+      <br>
+      <button class="confirm-back" onclick="goBackToForm()">← Soumettre une nouvelle demande</button>
+    </div>
+  </div>
+</div>
 </main>
 
 <footer>
@@ -644,9 +672,23 @@ function switchPage(p,btn){
   btn.classList.add('active');
   if(p==='dash') loadDashboardFromSheets();
   if(p==='track'){
-    // Preload data silently so tracking works immediately
     if(!demands.length) loadSheetsData(function(){});
   }
+}
+
+function showConfirmPage(){
+  document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('page-confirm').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+  window.scrollTo(0,0);
+}
+
+function goBackToForm(){
+  document.querySelectorAll('.page').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('page-form').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('btn-form').classList.add('active');
+  window.scrollTo(0,0);
 }
 
 // ── Shared loader (used by both dashboard and tracking) ───────
@@ -816,9 +858,15 @@ function collectSubDemandes(){
 function handleFileChange(input) {
   var confirmEl = document.getElementById('file-confirm');
   var confirmText = document.getElementById('file-confirm-text');
+  var labelText = document.getElementById('file-label-text');
   var MAX_MB = 10;
   var files = Array.from(input.files);
-  if (!files.length) { confirmEl.style.display = 'none'; return; }
+
+  if (!files.length) {
+    confirmEl.style.display = 'none';
+    if(labelText) labelText.textContent = 'Aucun fichier sélectionné';
+    return;
+  }
 
   var oversized = files.filter(function(f){ return f.size > MAX_MB * 1024 * 1024; });
   if (oversized.length) {
@@ -826,40 +874,38 @@ function handleFileChange(input) {
     confirmEl.style.borderColor = '#F87171';
     confirmEl.style.color = '#991B1B';
     confirmEl.style.display = 'block';
-    confirmText.textContent = oversized.map(function(f){ return f.name; }).join(', ') + ' dépasse(nt) ' + MAX_MB + ' Mo. Veuillez réduire la taille.';
+    confirmText.textContent = oversized.map(function(f){ return f.name; }).join(', ') + ' dépasse(nt) ' + MAX_MB + ' Mo.';
+    if(labelText) labelText.textContent = 'Aucun fichier sélectionné';
     input.value = '';
     return;
   }
+
   var names = files.map(function(f){ return f.name; }).join(', ');
   var total = (files.reduce(function(s,f){ return s+f.size; }, 0) / (1024*1024)).toFixed(1);
+
+  if(labelText) labelText.textContent = files.length + ' fichier(s) : ' + names;
+
   confirmEl.style.background = '#EBFAF2';
   confirmEl.style.borderColor = '#A3D9B1';
   confirmEl.style.color = '#166534';
   confirmEl.style.display = 'block';
-  confirmText.textContent = files.length + ' fichier(s) attaché(s) : ' + names + ' (' + total + ' Mo)';
+  confirmText.textContent = '✅ ' + files.length + ' fichier(s) attaché(s) (' + total + ' Mo)';
 }
 
-// ── Read file as base64 for EmailJS attachment ────────────────
+// ── Read file as base64 ──────────────────────────────────────
 function readFileAsBase64(file) {
   return new Promise(function(resolve, reject) {
     var reader = new FileReader();
-    reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+    reader.onload = function(e) { resolve(e.target.result); }; // full data URL
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-
 var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyGQxehUYA-bL8IooYcTaHgBCzuF2hIDRtLKeXyuN--ODDnOEVtBRA-h9hvlAwcUlB0WQ/exec';
 
-// ── EmailJS ───────────────────────────────────────────────────
-var EJS = {
-  publicKey:       'xza8qKJVUOy3L9MFd',
-  serviceId:       'service_u2khr9v',
-  templateAdmin:   'template_832bwz2',   // → vous (nouvelle demande)
-  templateUser:    'template_ry2inms'    // → demandeur (confirmation)
-};
-emailjs.init({ publicKey: EJS.publicKey });
+// ── Web3Forms ─────────────────────────────────────────────────
+var W3F_KEY = '5c0ba3a6-bc30-4aa0-91a3-69977bc92235';
 
 // --- SUBMIT ---
 var demands=[];
@@ -912,63 +958,81 @@ function submitForm(){
   btn.disabled = true;
   btn.textContent = 'Envoi en cours…';
 
+  // ── Envoi Google Sheets ──────────────────────────────────────
   fetch(SHEETS_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
-  }).then(function() {
-    // ── Emails ────────────────────────────────────────────────
-    var emailParams = {
-      id:         String(payload.id).padStart(3,'0'),
-      sujet:      payload.sujet,
-      nom:        payload.nom,
-      email:      payload.email,
-      tel:        payload.tel || '—',
-      dept:       payload.dept,
-      service:    payload.service,
-      delegation: payload.delegation || '—',
-      type:       payload.typeLabel || payload.type,
-      deadline:   payload.deadline,
-      desc:       payload.desc,
-      notes:      payload.notes || ''
-    };
+  });
 
-    // Joindre les fichiers si présents
-    var filesInput = document.getElementById('f-files');
-    var filePromises = [];
-    if (filesInput && filesInput.files.length) {
-      Array.from(filesInput.files).slice(0, 3).forEach(function(file, i) {
-        filePromises.push(
-          readFileAsBase64(file).then(function(b64) {
-            emailParams['attachment_' + (i+1) + '_name'] = file.name;
-            emailParams['attachment_' + (i+1) + '_data'] = b64;
-          })
-        );
+  // ── Afficher confirmation immédiatement ───────────────────
+  btn.disabled = false;
+  btn.textContent = 'Envoyer la demande';
+  var refNum = '#' + String(payload.id).padStart(3,'0');
+  document.getElementById('confirm-ref-display').textContent = refNum;
+  var cl = document.getElementById('confirm-logo');
+  var hl = document.getElementById('header-logo');
+  if(cl && hl) cl.src = hl.src;
+  showConfirmPage();
+  resetForm();
+
+  // ── Envoi Web3Forms en arrière-plan ───────────────────────
+  var filesInput = document.getElementById('f-files');
+  var fileList = filesInput ? Array.from(filesInput.files) : [];
+  var refId = '#' + String(payload.id).padStart(3,'0');
+
+  var bodyAdmin = '<h2>Nouvelle demande ' + refId + '</h2>' +
+    '<p><b>Sujet :</b> ' + payload.sujet + '</p>' +
+    '<p><b>Demandeur :</b> ' + payload.nom + '</p>' +
+    '<p><b>Email :</b> ' + payload.email + '</p>' +
+    '<p><b>Telephone :</b> ' + (payload.tel||'—') + '</p>' +
+    '<p><b>Intitule :</b> ' + (payload.service||'—') + '</p>' +
+    '<p><b>Departement :</b> ' + (payload.dept||'—') + '</p>' +
+    (payload.delegation ? '<p><b>Delegation :</b> ' + payload.delegation + '</p>' : '') +
+    '<p><b>Type :</b> ' + (payload.typeLabel||payload.type) + '</p>' +
+    '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
+    '<p><b>Description :</b> ' + payload.desc + '</p>' +
+    (payload.notes ? '<p><b>Notes :</b> ' + payload.notes + '</p>' : '');
+
+  var bodyUser = '<p>Bonjour ' + payload.nom + ',</p>' +
+    '<p>Votre demande a bien ete enregistree sur la plateforme ONMT DA.</p>' +
+    '<p><b>Reference :</b> ' + refId + '</p>' +
+    '<p><b>Sujet :</b> ' + payload.sujet + '</p>' +
+    '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
+    '<p>Le Departement Marketing reviendra vers vous rapidement.</p>';
+
+  Promise.all(fileList.map(readFileAsBase64)).then(function(b64files) {
+    var w3fAdmin = {
+      access_key: W3F_KEY,
+      subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
+      from_name: payload.nom,
+      email: payload.email,
+      html: bodyAdmin
+    };
+    if (b64files.length) {
+      w3fAdmin.file_attachments = b64files.map(function(b64, i) {
+        return { name: fileList[i].name, data: b64 };
       });
     }
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(w3fAdmin)
+    }).catch(function(e){ console.warn('Admin email error:', e); });
 
-    Promise.all(filePromises).then(function() {
-      // Email 1 → admin (vous)
-      emailjs.send(EJS.serviceId, EJS.templateAdmin, emailParams)
-        .catch(function(e){ console.warn('Email admin:', e); });
-      // Email 2 → demandeur
-      emailjs.send(EJS.serviceId, EJS.templateUser, emailParams)
-        .catch(function(e){ console.warn('Email user:', e); });
-    });
-
-    btn.disabled = false;
-    btn.textContent = 'Envoyer la demande';
-    document.getElementById('success-banner').style.display='block';
-    setTimeout(function(){document.getElementById('success-banner').style.display='none';},5000);
-    resetForm();
-  }).catch(function() {
-    btn.disabled = false;
-    btn.textContent = 'Envoyer la demande';
-    document.getElementById('success-banner').style.display='block';
-    setTimeout(function(){document.getElementById('success-banner').style.display='none';},5000);
-    resetForm();
-  });
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        access_key: W3F_KEY,
+        subject: 'Demande ' + refId + ' bien recue — ONMT DA',
+        from_name: 'ONMT Direction Artistique',
+        email: payload.email,
+        html: bodyUser
+      })
+    }).catch(function(e){ console.warn('User email error:', e); });
+  }).catch(function(e){ console.warn('File read error:', e); });
 }
 
 function resetForm(){
@@ -983,6 +1047,7 @@ function resetForm(){
   // Reset file input & confirmation
   var fi=document.getElementById('f-files');if(fi)fi.value='';
   var fc=document.getElementById('file-confirm');if(fc)fc.style.display='none';
+  var fl=document.getElementById('file-label-text');if(fl)fl.textContent='Aucun fichier sélectionné';
   handleType('');
 }
 
