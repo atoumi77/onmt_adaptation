@@ -643,38 +643,95 @@ function switchPage(p,btn){
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   if(p==='dash') loadDashboardFromSheets();
+  if(p==='track'){
+    // Preload data silently so tracking works immediately
+    if(!demands.length) loadSheetsData(function(){});
+  }
+}
+
+// ── Shared loader (used by both dashboard and tracking) ───────
+function loadSheetsData(callback){
+  var cbName = 'sheetsCb_' + Date.now();
+  window[cbName] = function(data) {
+    var s = document.getElementById('jsonp-script');
+    if(s) s.parentNode.removeChild(s);
+    delete window[cbName];
+    if(Array.isArray(data) && data.length){
+      demands = data.map(function(d,i){
+        var rawType = String(d.type||'autre').toLowerCase()
+          .replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e')
+          .replace(/visuel kv/g,'visuelkv')
+          .replace(/photo raw/g,'photo')
+          .replace(/bannière/g,'banniere').replace(/banniere/g,'banniere')
+          .replace(/vidéo/g,'video').replace(/video/g,'video')
+          .replace(/\s+/g,'');
+        var id = d.id && String(d.id)!=='' && String(d.id)!=='0' ? Number(d.id) : (i+1);
+        return {
+          id:id, sujet:d.sujet||'—', nom:d.nom||'', email:d.email||'',
+          tel:d.tel||'', dept:d.dept||'', service:d.service||'',
+          delegation:d.delegation||'', desc:d.desc||'', type:rawType,
+          typeLabel:d.type||'', context:d.context||'', support:d.support||'',
+          dimensions:d.dimensions||'', langs:d.langs||'', deadline:d.deadline||'',
+          notes:d.notes||'', status:d.status||'En attente',
+          priorite:d.priorite||'normal', date:d.date||''
+        };
+      });
+    }
+    callback();
+  };
+  var timeout = setTimeout(function(){
+    if(window[cbName]){ delete window[cbName]; callback(); }
+  }, 8000);
+  var script = document.createElement('script');
+  script.id = 'jsonp-script';
+  script.src = SHEETS_URL + '?callback=' + cbName + '&t=' + Date.now();
+  script.onerror = function(){ clearTimeout(timeout); delete window[cbName]; callback(); };
+  document.head.appendChild(script);
 }
 
 // --- TRACKING ---
 function trackSearch(){
   var email = document.getElementById('track-email').value.trim().toLowerCase();
   var resultsEl = document.getElementById('track-results');
-  if(!email){resultsEl.innerHTML='<div class="track-empty"><div class="ei">📧</div>Veuillez saisir votre email.</div>';return;}
-  var found = demands.filter(function(d){return d.email.toLowerCase()===email;});
-  if(!found.length){
-    resultsEl.innerHTML='<div class="track-empty"><div class="ei">🔍</div>Aucune demande trouvée pour cet email.</div>';
+  if(!email){
+    resultsEl.innerHTML='<div class="track-empty"><div class="ei">📧</div>Veuillez saisir votre email.</div>';
     return;
   }
-  var statusClass = {
-    'En attente':'ts-wait','En cours':'ts-prog','Terminé':'ts-done','Annulé':'ts-cancel'
-  };
-  var statusLabel = {
-    'En attente':'En attente','En cours':'En cours','Terminé':'Terminé ✓','Annulé':'Annulé'
-  };
-  var html = '';
-  found.forEach(function(d){
-    var sc = statusClass[d.status]||'ts-wait';
-    var sl = statusLabel[d.status]||d.status;
-    html += '<div class="track-card">'+
-      '<div class="track-card-head">'+
-        '<span class="track-card-id">#'+String(d.id).padStart(3,'0')+'</span>'+
-        '<span class="track-status '+sc+'">'+sl+'</span>'+
-      '</div>'+
-      '<div class="track-card-sujet">'+d.sujet+'</div>'+
-      '<div class="track-card-meta">'+d.dept+' &middot; Soumis le '+d.date+'&ensp;&mdash;&ensp;Deadline : '+d.deadline+'</div>'+
-    '</div>';
-  });
-  resultsEl.innerHTML = html;
+
+  // Show loading state
+  resultsEl.innerHTML='<div class="track-empty"><div class="ei">⏳</div>Recherche en cours…</div>';
+
+  function doSearch(){
+    var found = demands.filter(function(d){
+      return String(d.email||'').toLowerCase()===email;
+    });
+    if(!found.length){
+      resultsEl.innerHTML='<div class="track-empty"><div class="ei">🔍</div>Aucune demande trouvée pour cet email.</div>';
+      return;
+    }
+    var statusClass = {'En attente':'ts-wait','En cours':'ts-prog','Terminé':'ts-done','Annulé':'ts-cancel'};
+    var statusLabel = {'En attente':'En attente','En cours':'En cours','Terminé':'Terminé ✓','Annulé':'Annulé'};
+    var html = '';
+    found.forEach(function(d){
+      var sc = statusClass[d.status]||'ts-wait';
+      var sl = statusLabel[d.status]||d.status;
+      html += '<div class="track-card">'+
+        '<div class="track-card-head">'+
+          '<span class="track-card-id">#'+String(d.id).padStart(3,'0')+'</span>'+
+          '<span class="track-status '+sc+'">'+sl+'</span>'+
+        '</div>'+
+        '<div class="track-card-sujet">'+d.sujet+'</div>'+
+        '<div class="track-card-meta">'+
+          (d.dept||'—')+' &middot; Soumis le '+(d.date||'—')+
+          '&ensp;&mdash;&ensp;Deadline : '+(d.deadline||'—')+
+        '</div>'+
+      '</div>';
+    });
+    resultsEl.innerHTML = html;
+  }
+
+  // Always reload from Sheets for up-to-date status
+  loadSheetsData(doSearch);
 }
 
 // --- FORM CONDITIONALS ---
@@ -935,76 +992,7 @@ function loadDashboardFromSheets(){
   var empty = document.getElementById('dash-empty');
   if(body) body.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--gray-600);font-size:13px">⏳ Chargement des demandes depuis Google Sheets…</div>';
   if(empty) empty.style.display = 'none';
-
-  // Callback unique pour éviter les conflits
-  var cbName = 'sheetsCb_' + Date.now();
-
-  window[cbName] = function(data) {
-    // Nettoyer le script tag et le callback
-    var s = document.getElementById('jsonp-script');
-    if(s) s.parentNode.removeChild(s);
-    delete window[cbName];
-
-    if(!Array.isArray(data) || !data.length){
-      // Aucune donnée dans Sheets → garder les données locales
-      renderDash();
-      return;
-    }
-
-    demands = data.map(function(d, i){
-      var rawType = String(d.type||'autre').toLowerCase()
-        .replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e')
-        .replace(/visuel kv/g,'visuelkv')
-        .replace(/photo raw/g,'photo')
-        .replace(/bannière/g,'banniere').replace(/banniere/g,'banniere')
-        .replace(/vidéo/g,'video').replace(/video/g,'video')
-        .replace(/\s+/g,'');
-      var id = d.id && String(d.id) !== '' && String(d.id) !== '0' ? Number(d.id) : (i+1);
-      return {
-        id:         id,
-        sujet:      d.sujet    || '—',
-        nom:        d.nom      || '',
-        email:      d.email    || '',
-        dept:       d.dept     || '',
-        service:    d.service  || '',
-        desc:       d.desc     || '',
-        type:       rawType,
-        typeLabel:  d.type     || '',
-        context:    d.context  || '',
-        support:    d.support  || '',
-        dimensions: d.dimensions || '',
-        langs:      d.langs    || '',
-        deadline:   d.deadline || '',
-        notes:      d.notes    || '',
-        status:     d.status   || 'En attente',
-        priorite:   d.priorite || 'normal',
-        date:       d.date     || ''
-      };
-    });
-
-    renderDash();
-  };
-
-  // Timeout si Apps Script ne répond pas
-  var timeout = setTimeout(function(){
-    if(window[cbName]){
-      delete window[cbName];
-      console.warn('Sheets timeout — données locales utilisées');
-      renderDash();
-    }
-  }, 8000);
-
-  // Injecter le script JSONP
-  var script = document.createElement('script');
-  script.id = 'jsonp-script';
-  script.src = SHEETS_URL + '?callback=' + cbName + '&t=' + Date.now();
-  script.onerror = function(){
-    clearTimeout(timeout);
-    delete window[cbName];
-    console.warn('Sheets inaccessible — données locales utilisées');
-    renderDash();
-  };
-  document.head.appendChild(script);
+  loadSheetsData(function(){ renderDash(); });
 }
 
 // --- DASHBOARD ---
