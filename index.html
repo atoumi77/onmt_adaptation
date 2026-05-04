@@ -1038,61 +1038,58 @@ function submitForm(){
     date:new Date().toLocaleDateString('fr-FR')
   };
 
-  // Ajouter localement pour le dashboard (session courante)
+  // Ajouter localement pour le dashboard
   demands.push(payload);
 
-  // Envoyer à Google Sheets (no-cors = pas de réponse mais ça passe)
-  var btn = document.querySelector('.btn-submit');
-  btn.disabled = true;
-  btn.textContent = 'Envoi en cours…';
-
-  // ── Lire les fichiers en base64 ──────────────────────────────
+  var btn    = document.querySelector('.btn-submit');
+  var refId  = '#' + String(payload.id).padStart(3,'0');
   var filesInput = document.getElementById('f-files');
   var fileList   = filesInput ? Array.from(filesInput.files) : [];
-  var refId      = '#' + String(payload.id).padStart(3,'0');
 
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = fileList.length ? 'Upload en cours…' : 'Envoi en cours…';
 
+  // ── ÉTAPE 1 : Lire fichiers en base64 ────────────────────
   Promise.all(fileList.map(readFileAsBase64)).then(function(b64files) {
 
-    // Ajouter les fichiers au payload pour Drive
+    // ── ÉTAPE 2 : Upload Drive via JSONP ─────────────────────
+    //   (contourne les CORS — même technique que le dashboard)
     if (b64files.length) {
       payload.attachments = b64files.map(function(b64, i) {
         return { name: fileList[i].name, type: fileList[i].type, data: b64 };
       });
+      return uploadToDriveJSONP(payload);
     }
+    return Promise.resolve({ attachmentLinksHtml: '', attachmentLinks: '' });
 
-    // ── Envoi vers Apps Script (Sheets + Drive) ──────────────
-    return fetch(SHEETS_URL, {
+  }).then(function(driveResult) {
+
+    var driveLinksHtml = driveResult.attachmentLinksHtml || '';
+
+    // ── ÉTAPE 3 : Envoi Sheets en no-cors (toujours fiable) ──
+    fetch(SHEETS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(payload)
+      mode:   'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body:   JSON.stringify(payload)
     });
 
-  }).then(function(resp) {
-    // Apps Script retourne les liens Drive
-    return resp.json().catch(function(){ return {}; });
-
-  }).then(function(result) {
-    var driveLinksHtml = result.attachmentLinksHtml || '';
-
-    // ── Email admin avec liens Drive ─────────────────────────
+    // ── ÉTAPE 4 : Emails Web3Forms ───────────────────────────
     var bodyAdmin =
       '<h2 style="color:#111">Nouvelle demande ' + refId + '</h2>' +
       '<table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">' +
       '<tr><td style="padding:6px 14px;color:#666">Sujet</td><td style="padding:6px 14px"><b>' + payload.sujet + '</b></td></tr>' +
       '<tr><td style="padding:6px 14px;color:#666">Demandeur</td><td style="padding:6px 14px">' + payload.nom + '</td></tr>' +
       '<tr><td style="padding:6px 14px;color:#666">Email</td><td style="padding:6px 14px">' + payload.email + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Telephone</td><td style="padding:6px 14px">' + (payload.tel||'—') + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Intitule</td><td style="padding:6px 14px">' + (payload.service||'—') + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Tel</td><td style="padding:6px 14px">' + (payload.tel||'—') + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Poste</td><td style="padding:6px 14px">' + (payload.service||'—') + '</td></tr>' +
       '<tr><td style="padding:6px 14px;color:#666">Departement</td><td style="padding:6px 14px">' + (payload.dept||'—') + '</td></tr>' +
       (payload.delegation ? '<tr><td style="padding:6px 14px;color:#666">Delegation</td><td style="padding:6px 14px">' + payload.delegation + '</td></tr>' : '') +
       '<tr><td style="padding:6px 14px;color:#666">Type</td><td style="padding:6px 14px">' + (payload.typeLabel||payload.type) + '</td></tr>' +
       '<tr><td style="padding:6px 14px;color:#666">Deadline</td><td style="padding:6px 14px">' + payload.deadline + '</td></tr>' +
       '<tr><td style="padding:6px 14px;color:#666">Description</td><td style="padding:6px 14px">' + payload.desc + '</td></tr>' +
       (payload.notes ? '<tr><td style="padding:6px 14px;color:#666">Notes</td><td style="padding:6px 14px">' + payload.notes + '</td></tr>' : '') +
-      (driveLinksHtml ? '<tr><td style="padding:6px 14px;color:#666"><b>Pieces jointes</b></td><td style="padding:6px 14px">' + driveLinksHtml + '</td></tr>' : '') +
+      (driveLinksHtml ? '<tr><td style="padding:6px 14px;color:#007B55"><b>Pieces jointes Drive</b></td><td style="padding:6px 14px">' + driveLinksHtml + '</td></tr>' : '') +
       '</table>';
 
     var bodyUser =
@@ -1103,40 +1100,24 @@ function submitForm(){
       '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
       '<p>Le Departement Marketing reviendra vers vous rapidement.</p>';
 
-    // Email admin
     fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        access_key: W3F_KEY,
-        subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
-        from_name: payload.nom,
-        email: payload.email,
-        html: bodyAdmin
-      })
+      body: JSON.stringify({ access_key: W3F_KEY, subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet, from_name: payload.nom, email: payload.email, html: bodyAdmin })
     }).catch(function(e){ console.warn('Email admin:', e); });
 
-    // Email demandeur
     fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        access_key: W3F_KEY,
-        subject: 'Demande ' + refId + ' bien recue — ONMT DA',
-        from_name: 'ONMT Direction Artistique',
-        email: payload.email,
-        html: bodyUser
-      })
+      body: JSON.stringify({ access_key: W3F_KEY, subject: 'Demande ' + refId + ' bien recue — ONMT DA', from_name: 'ONMT Direction Artistique', email: payload.email, html: bodyUser })
     }).catch(function(e){ console.warn('Email user:', e); });
 
-    // Afficher confirmation
+    // ── ÉTAPE 5 : Confirmation ────────────────────────────────
     btn.disabled = false;
     btn.textContent = 'Envoyer la demande';
-    var refNum = '#' + String(payload.id).padStart(3,'0');
-    document.getElementById('confirm-ref-display').textContent = refNum;
-    var cl = document.getElementById('confirm-logo');
-    var hl = document.getElementById('header-logo');
-    if(cl && hl) cl.src = hl.src;
+    document.getElementById('confirm-ref-display').textContent = refId;
+    var cl=document.getElementById('confirm-logo'), hl=document.getElementById('header-logo');
+    if(cl&&hl) cl.src=hl.src;
     showConfirmPage();
     resetForm();
 
@@ -1144,13 +1125,45 @@ function submitForm(){
     console.warn('Submit error:', err);
     btn.disabled = false;
     btn.textContent = 'Envoyer la demande';
-    var refNum = '#' + String(payload.id).padStart(3,'0');
-    document.getElementById('confirm-ref-display').textContent = refNum;
-    var cl = document.getElementById('confirm-logo');
-    var hl = document.getElementById('header-logo');
-    if(cl && hl) cl.src = hl.src;
+    document.getElementById('confirm-ref-display').textContent = refId;
+    var cl=document.getElementById('confirm-logo'), hl=document.getElementById('header-logo');
+    if(cl&&hl) cl.src=hl.src;
     showConfirmPage();
     resetForm();
+  });
+}
+
+// ── Upload Drive via JSONP ────────────────────────────────────
+function uploadToDriveJSONP(payload) {
+  return new Promise(function(resolve) {
+    var cbName = 'driveCb_' + Date.now();
+    var timeout = setTimeout(function() {
+      delete window[cbName];
+      var s = document.getElementById('drive-jsonp-script');
+      if(s) s.parentNode.removeChild(s);
+      console.warn('Drive upload timeout — continuing without links');
+      resolve({ attachmentLinksHtml: '', attachmentLinks: '' });
+    }, 20000);
+
+    window[cbName] = function(result) {
+      clearTimeout(timeout);
+      delete window[cbName];
+      var s = document.getElementById('drive-jsonp-script');
+      if(s) s.parentNode.removeChild(s);
+      resolve(result || { attachmentLinksHtml: '', attachmentLinks: '' });
+    };
+
+    // Encoder le payload en base64 pour passer en GET
+    var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    var script = document.createElement('script');
+    script.id  = 'drive-jsonp-script';
+    script.src = SHEETS_URL + '?action=upload&callback=' + cbName + '&data=' + encodeURIComponent(encoded) + '&t=' + Date.now();
+    script.onerror = function() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      resolve({ attachmentLinksHtml: '', attachmentLinks: '' });
+    };
+    document.head.appendChild(script);
   });
 }
 
