@@ -493,11 +493,11 @@ input.field-error{border-color:var(--red)!important;background:#fff8f8!important
       <div class="field">
         <label>Fichiers joints <span style="font-weight:400;color:var(--gray-600)">(optionnel)</span></label>
         <div class="file-area" id="file-drop-area">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--gray-600);font-size:13px">
+          <label for="f-files" style="display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--gray-600);font-size:13px">
             <span style="padding:6px 14px;background:var(--gray-100);border:1px solid var(--gray-300);border-radius:var(--radius);font-size:12px;font-weight:500;white-space:nowrap;color:var(--black)">Choisir des fichiers</span>
             <span id="file-label-text">Aucun fichier sélectionné</span>
           </label>
-          <input type="file" id="f-files" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.ai,.eps,.mp4,.zip" onchange="handleFileChange(this)" style="position:absolute;opacity:0;width:1px;height:1px;overflow:hidden">
+          <input type="file" id="f-files" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.ai,.eps,.mp4,.zip" onchange="handleFileChange(this)" style="display:none">
         </div>
         <div id="file-confirm" style="display:none;margin-top:8px;padding:8px 12px;background:#EBFAF2;border:1px solid #A3D9B1;border-radius:var(--radius);font-size:12px;color:#166534">
           ✅ <span id="file-confirm-text"></span>
