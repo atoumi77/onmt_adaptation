@@ -1103,13 +1103,29 @@ function submitForm(){
     fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ access_key: W3F_KEY, subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet, from_name: payload.nom, email: payload.email, html: bodyAdmin })
+      body: JSON.stringify({
+        access_key: W3F_KEY,
+        subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
+        from_name: payload.nom,
+        email: payload.email,
+        message: bodyAdmin,
+        is_html: true,
+        botcheck: false
+      })
     }).catch(function(e){ console.warn('Email admin:', e); });
 
     fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ access_key: W3F_KEY, subject: 'Demande ' + refId + ' bien recue — ONMT DA', from_name: 'ONMT Direction Artistique', email: payload.email, html: bodyUser })
+      body: JSON.stringify({
+        access_key: W3F_KEY,
+        subject: 'Demande ' + refId + ' bien recue — ONMT DA',
+        from_name: 'ONMT Direction Artistique',
+        email: payload.email,
+        message: bodyUser,
+        is_html: true,
+        botcheck: false
+      })
     }).catch(function(e){ console.warn('Email user:', e); });
 
     // ── ÉTAPE 5 : Confirmation ────────────────────────────────
@@ -1133,38 +1149,20 @@ function submitForm(){
   });
 }
 
-// ── Upload Drive via JSONP ────────────────────────────────────
+// ── Upload Drive via doPost (pas de limite de taille) ────────
 function uploadToDriveJSONP(payload) {
-  return new Promise(function(resolve) {
-    var cbName = 'driveCb_' + Date.now();
-    var timeout = setTimeout(function() {
-      delete window[cbName];
-      var s = document.getElementById('drive-jsonp-script');
-      if(s) s.parentNode.removeChild(s);
-      console.warn('Drive upload timeout — continuing without links');
-      resolve({ attachmentLinksHtml: '', attachmentLinks: '' });
-    }, 20000);
-
-    window[cbName] = function(result) {
-      clearTimeout(timeout);
-      delete window[cbName];
-      var s = document.getElementById('drive-jsonp-script');
-      if(s) s.parentNode.removeChild(s);
-      resolve(result || { attachmentLinksHtml: '', attachmentLinks: '' });
-    };
-
-    // Encoder le payload en base64 pour passer en GET
-    var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    var script = document.createElement('script');
-    script.id  = 'drive-jsonp-script';
-    script.src = SHEETS_URL + '?action=upload&callback=' + cbName + '&data=' + encodeURIComponent(encoded) + '&t=' + Date.now();
-    script.onerror = function() {
-      clearTimeout(timeout);
-      delete window[cbName];
-      resolve({ attachmentLinksHtml: '', attachmentLinks: '' });
-    };
-    document.head.appendChild(script);
-  });
+  // On envoie en no-cors vers Apps Script avec action=upload
+  // Apps Script stocke sur Drive et on n'attend pas de réponse
+  // (les liens Drive ne seront pas dans l'email mais les fichiers sont bien uploadés)
+  var drivePayload = { action: 'upload_drive', attachments: payload.attachments, nom: payload.nom, id: payload.id };
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(drivePayload)
+  }).catch(function(e){ console.warn('Drive upload:', e); });
+  // Retourner une promesse résolue immédiatement — pas d'attente
+  return Promise.resolve({ attachmentLinksHtml: '', attachmentLinks: '' });
 }
 
 function resetForm(){
