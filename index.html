@@ -54,7 +54,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
 
 /* FORM */
 .form-intro{margin-bottom:2rem}
-.form-intro h1{font-size:22px;font-weight:600;color:var(--black);margin-bottom:6px}
+.form-intro h1{font-size:28px;font-weight:700;color:var(--black);margin-bottom:8px;line-height:1.2}
 .form-intro p{font-size:14px;color:var(--gray-600)}
 .section-label{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--gray-600);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--gray-200)}
 .card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:1.75rem;margin-bottom:1.25rem}
@@ -239,6 +239,19 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
 .ts-cancel{background:#F1F1EF;color:#444}
 .track-empty{text-align:center;padding:2.5rem;color:var(--gray-600);font-size:14px}
 .track-empty .ei{font-size:28px;margin-bottom:8px}
+/* EMAIL SPLIT */
+.email-split{display:flex;align-items:center;border:1px solid var(--gray-300);border-radius:var(--radius);background:#fff;overflow:hidden;transition:border .15s}
+.email-split:focus-within{border-color:var(--black)}
+.email-split input{flex:1;padding:10px 10px;font-size:14px;font-family:'DM Sans',sans-serif;border:none;outline:none;background:transparent;color:var(--black);min-width:0}
+.email-at{padding:0 4px;color:var(--gray-600);font-size:14px;flex-shrink:0}
+.email-domain{padding:10px 12px 10px 0;font-size:14px;color:var(--gray-600);white-space:nowrap;flex-shrink:0}
+/* LOCKED FIELD */
+input.field-locked{background:var(--gray-100)!important;color:var(--gray-600)!important;cursor:not-allowed;border-color:var(--gray-200)!important}
+/* VALIDATION */
+input.field-error{border-color:var(--red)!important;background:#fff8f8!important}
+.validation-msg{background:#FEE2E2;border:1px solid #FECACA;border-radius:var(--radius);padding:12px 16px;margin-top:1rem;font-size:13px;color:#991B1B;line-height:1.7}
+.validation-msg ul{margin:4px 0 0 16px;padding:0}
+.validation-msg li{margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -288,7 +301,12 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
         </div>
         <div class="field">
           <label>Votre email <span class="req">*</span></label>
-          <input type="email" id="f-email">
+          <div class="email-split">
+            <input type="text" id="f-email-local" placeholder="prenom.nom" oninput="syncEmail()" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <span class="email-at">@</span>
+            <span class="email-domain">onmt.org.ma</span>
+          </div>
+          <input type="hidden" id="f-email">
         </div>
       </div>
       <div class="row2">
@@ -303,12 +321,12 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:20px;text-al
       </div>
       <div class="row2">
         <div class="field">
-          <label>Département</label>
-          <input type="text" id="f-dept">
+          <label>Département <span id="dept-opt" style="font-weight:400;color:var(--gray-600)">(si concerné)</span></label>
+          <input type="text" id="f-dept" oninput="lockOpposite('f-dept','f-delegation','dept-opt','deleg-opt')" placeholder="">
         </div>
         <div class="field">
-          <label>Délégation à l'étranger <span style="font-weight:400;color:var(--gray-600)">(si concerné)</span></label>
-          <input type="text" id="f-delegation" placeholder="ex : Paris, Madrid, Montréal…">
+          <label>Délégation à l'étranger <span id="deleg-opt" style="font-weight:400;color:var(--gray-600)">(si concerné)</span></label>
+          <input type="text" id="f-delegation" placeholder="ex : Paris, Madrid, Montréal…" oninput="lockOpposite('f-delegation','f-dept','deleg-opt','dept-opt')">
         </div>
       </div>
     </div>
@@ -907,18 +925,88 @@ var SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyGQxehUYA-bL8IooYcTaH
 // ── Web3Forms ─────────────────────────────────────────────────
 var W3F_KEY = '5c0ba3a6-bc30-4aa0-91a3-69977bc92235';
 
+// ── Email split ───────────────────────────────────────────
+function syncEmail() {
+  var local = document.getElementById('f-email-local').value.trim();
+  document.getElementById('f-email').value = local ? local + '@onmt.org.ma' : '';
+}
+
+// ── Verrouillage mutuel Département / Délégation ──────────
+function lockOpposite(sourceId, targetId, sourceOptId, targetOptId) {
+  var sourceVal = document.getElementById(sourceId).value.trim();
+  var targetEl  = document.getElementById(targetId);
+  var targetOpt = document.getElementById(targetOptId);
+  if (sourceVal) {
+    targetEl.value = '';
+    targetEl.classList.add('field-locked');
+    targetEl.setAttribute('disabled', true);
+    if(targetOpt) targetOpt.textContent = '(verrouillé)';
+  } else {
+    targetEl.classList.remove('field-locked');
+    targetEl.removeAttribute('disabled');
+    if(targetOpt) targetOpt.textContent = '(si concerné)';
+  }
+}
+
 // --- SUBMIT ---
 var demands=[];
 function getVal(id){var el=document.getElementById(id);return el?el.value.trim():'';}
 
 function submitForm(){
-  var nom=getVal('f-nom'),email=getVal('f-email'),dept=getVal('f-dept');
-  var tel=getVal('f-tel'),service=getVal('f-service'),sujet=getVal('f-sujet');
-  var delegation=getVal('f-delegation');
-  var desc=getVal('f-desc'),type=document.getElementById('f-type').value;
-  var deadline=getVal('f-deadline');
-  if(!nom||!email||!tel||!dept||!service||!sujet||!desc||!type||!deadline){
-    alert('Merci de remplir tous les champs obligatoires (*).'); return;
+  // Sync email avant validation
+  syncEmail();
+
+  var nom      = getVal('f-nom');
+  var email    = getVal('f-email');
+  var emailLocal = getVal('f-email-local');
+  var tel      = getVal('f-tel');
+  var service  = getVal('f-service');
+  var dept     = getVal('f-dept');
+  var delegation = getVal('f-delegation');
+  var sujet    = getVal('f-sujet');
+  var desc     = getVal('f-desc');
+  var type     = document.getElementById('f-type').value;
+  var deadline = getVal('f-deadline');
+
+  // Département OU Délégation requis
+  var hasLocation = dept || delegation;
+
+  // Construire la liste des erreurs
+  var errors = [];
+  var errorIds = [];
+
+  if (!nom)       { errors.push('Votre nom');                  errorIds.push('f-nom'); }
+  if (!emailLocal){ errors.push('Votre email');                errorIds.push('f-email-local'); }
+  if (!tel)       { errors.push('Numéro de téléphone');        errorIds.push('f-tel'); }
+  if (!service)   { errors.push('Intitulé du poste');          errorIds.push('f-service'); }
+  if (!hasLocation){ errors.push('Département ou Délégation'); errorIds.push('f-dept'); }
+  if (!sujet)     { errors.push('Sujet de la demande');        errorIds.push('f-sujet'); }
+  if (!type)      { errors.push('Type de livrable');           errorIds.push('f-type'); }
+  if (!desc)      { errors.push('Description / brief');        errorIds.push('f-desc'); }
+  if (!deadline)  { errors.push('Deadline');                   errorIds.push('f-deadline'); }
+
+  // Effacer erreurs précédentes
+  document.querySelectorAll('.field-error').forEach(function(el){ el.classList.remove('field-error'); });
+  var oldMsg = document.getElementById('validation-msg');
+  if (oldMsg) oldMsg.remove();
+
+  if (errors.length) {
+    // Surligner les champs en erreur
+    errorIds.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.classList.add('field-error');
+    });
+    // Afficher message détaillé
+    var msg = document.createElement('div');
+    msg.id = 'validation-msg';
+    msg.className = 'validation-msg';
+    msg.innerHTML = '<strong>Merci de remplir les champs suivants :</strong><ul>' +
+      errors.map(function(e){ return '<li>' + e + '</li>'; }).join('') + '</ul>';
+    document.querySelector('.submit-area').appendChild(msg);
+    // Scroll vers le premier champ en erreur
+    var firstErr = document.getElementById(errorIds[0]);
+    if(firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
   }
   var langs=[];
   document.querySelectorAll('#lang-group input:checked').forEach(function(c){
@@ -958,69 +1046,77 @@ function submitForm(){
   btn.disabled = true;
   btn.textContent = 'Envoi en cours…';
 
-  // ── Envoi Google Sheets ──────────────────────────────────────
-  fetch(SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  });
-
-  // ── Afficher confirmation immédiatement ───────────────────
-  btn.disabled = false;
-  btn.textContent = 'Envoyer la demande';
-  var refNum = '#' + String(payload.id).padStart(3,'0');
-  document.getElementById('confirm-ref-display').textContent = refNum;
-  var cl = document.getElementById('confirm-logo');
-  var hl = document.getElementById('header-logo');
-  if(cl && hl) cl.src = hl.src;
-  showConfirmPage();
-  resetForm();
-
-  // ── Envoi Web3Forms en arrière-plan ───────────────────────
+  // ── Lire les fichiers en base64 ──────────────────────────────
   var filesInput = document.getElementById('f-files');
-  var fileList = filesInput ? Array.from(filesInput.files) : [];
-  var refId = '#' + String(payload.id).padStart(3,'0');
+  var fileList   = filesInput ? Array.from(filesInput.files) : [];
+  var refId      = '#' + String(payload.id).padStart(3,'0');
 
-  var bodyAdmin = '<h2>Nouvelle demande ' + refId + '</h2>' +
-    '<p><b>Sujet :</b> ' + payload.sujet + '</p>' +
-    '<p><b>Demandeur :</b> ' + payload.nom + '</p>' +
-    '<p><b>Email :</b> ' + payload.email + '</p>' +
-    '<p><b>Telephone :</b> ' + (payload.tel||'—') + '</p>' +
-    '<p><b>Intitule :</b> ' + (payload.service||'—') + '</p>' +
-    '<p><b>Departement :</b> ' + (payload.dept||'—') + '</p>' +
-    (payload.delegation ? '<p><b>Delegation :</b> ' + payload.delegation + '</p>' : '') +
-    '<p><b>Type :</b> ' + (payload.typeLabel||payload.type) + '</p>' +
-    '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
-    '<p><b>Description :</b> ' + payload.desc + '</p>' +
-    (payload.notes ? '<p><b>Notes :</b> ' + payload.notes + '</p>' : '');
-
-  var bodyUser = '<p>Bonjour ' + payload.nom + ',</p>' +
-    '<p>Votre demande a bien ete enregistree sur la plateforme ONMT DA.</p>' +
-    '<p><b>Reference :</b> ' + refId + '</p>' +
-    '<p><b>Sujet :</b> ' + payload.sujet + '</p>' +
-    '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
-    '<p>Le Departement Marketing reviendra vers vous rapidement.</p>';
+  btn.disabled = true;
+  btn.textContent = fileList.length ? 'Upload en cours…' : 'Envoi en cours…';
 
   Promise.all(fileList.map(readFileAsBase64)).then(function(b64files) {
-    var w3fAdmin = {
-      access_key: W3F_KEY,
-      subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
-      from_name: payload.nom,
-      email: payload.email,
-      html: bodyAdmin
-    };
+
+    // Ajouter les fichiers au payload pour Drive
     if (b64files.length) {
-      w3fAdmin.file_attachments = b64files.map(function(b64, i) {
-        return { name: fileList[i].name, data: b64 };
+      payload.attachments = b64files.map(function(b64, i) {
+        return { name: fileList[i].name, type: fileList[i].type, data: b64 };
       });
     }
+
+    // ── Envoi vers Apps Script (Sheets + Drive) ──────────────
+    return fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+  }).then(function(resp) {
+    // Apps Script retourne les liens Drive
+    return resp.json().catch(function(){ return {}; });
+
+  }).then(function(result) {
+    var driveLinksHtml = result.attachmentLinksHtml || '';
+
+    // ── Email admin avec liens Drive ─────────────────────────
+    var bodyAdmin =
+      '<h2 style="color:#111">Nouvelle demande ' + refId + '</h2>' +
+      '<table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">' +
+      '<tr><td style="padding:6px 14px;color:#666">Sujet</td><td style="padding:6px 14px"><b>' + payload.sujet + '</b></td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Demandeur</td><td style="padding:6px 14px">' + payload.nom + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Email</td><td style="padding:6px 14px">' + payload.email + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Telephone</td><td style="padding:6px 14px">' + (payload.tel||'—') + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Intitule</td><td style="padding:6px 14px">' + (payload.service||'—') + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Departement</td><td style="padding:6px 14px">' + (payload.dept||'—') + '</td></tr>' +
+      (payload.delegation ? '<tr><td style="padding:6px 14px;color:#666">Delegation</td><td style="padding:6px 14px">' + payload.delegation + '</td></tr>' : '') +
+      '<tr><td style="padding:6px 14px;color:#666">Type</td><td style="padding:6px 14px">' + (payload.typeLabel||payload.type) + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Deadline</td><td style="padding:6px 14px">' + payload.deadline + '</td></tr>' +
+      '<tr><td style="padding:6px 14px;color:#666">Description</td><td style="padding:6px 14px">' + payload.desc + '</td></tr>' +
+      (payload.notes ? '<tr><td style="padding:6px 14px;color:#666">Notes</td><td style="padding:6px 14px">' + payload.notes + '</td></tr>' : '') +
+      (driveLinksHtml ? '<tr><td style="padding:6px 14px;color:#666"><b>Pieces jointes</b></td><td style="padding:6px 14px">' + driveLinksHtml + '</td></tr>' : '') +
+      '</table>';
+
+    var bodyUser =
+      '<p>Bonjour ' + payload.nom + ',</p>' +
+      '<p>Votre demande a bien ete enregistree sur la plateforme ONMT DA.</p>' +
+      '<p><b>Reference :</b> ' + refId + '</p>' +
+      '<p><b>Sujet :</b> ' + payload.sujet + '</p>' +
+      '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
+      '<p>Le Departement Marketing reviendra vers vous rapidement.</p>';
+
+    // Email admin
     fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(w3fAdmin)
-    }).catch(function(e){ console.warn('Admin email error:', e); });
+      body: JSON.stringify({
+        access_key: W3F_KEY,
+        subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
+        from_name: payload.nom,
+        email: payload.email,
+        html: bodyAdmin
+      })
+    }).catch(function(e){ console.warn('Email admin:', e); });
 
+    // Email demandeur
     fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -1031,8 +1127,31 @@ function submitForm(){
         email: payload.email,
         html: bodyUser
       })
-    }).catch(function(e){ console.warn('User email error:', e); });
-  }).catch(function(e){ console.warn('File read error:', e); });
+    }).catch(function(e){ console.warn('Email user:', e); });
+
+    // Afficher confirmation
+    btn.disabled = false;
+    btn.textContent = 'Envoyer la demande';
+    var refNum = '#' + String(payload.id).padStart(3,'0');
+    document.getElementById('confirm-ref-display').textContent = refNum;
+    var cl = document.getElementById('confirm-logo');
+    var hl = document.getElementById('header-logo');
+    if(cl && hl) cl.src = hl.src;
+    showConfirmPage();
+    resetForm();
+
+  }).catch(function(err) {
+    console.warn('Submit error:', err);
+    btn.disabled = false;
+    btn.textContent = 'Envoyer la demande';
+    var refNum = '#' + String(payload.id).padStart(3,'0');
+    document.getElementById('confirm-ref-display').textContent = refNum;
+    var cl = document.getElementById('confirm-logo');
+    var hl = document.getElementById('header-logo');
+    if(cl && hl) cl.src = hl.src;
+    showConfirmPage();
+    resetForm();
+  });
 }
 
 function resetForm(){
@@ -1048,6 +1167,18 @@ function resetForm(){
   var fi=document.getElementById('f-files');if(fi)fi.value='';
   var fc=document.getElementById('file-confirm');if(fc)fc.style.display='none';
   var fl=document.getElementById('file-label-text');if(fl)fl.textContent='Aucun fichier sélectionné';
+  // Reset email split
+  var el=document.getElementById('f-email-local');if(el)el.value='';
+  document.getElementById('f-email').value='';
+  // Reset verrou
+  ['f-dept','f-delegation'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){el.classList.remove('field-locked','field-error');el.removeAttribute('disabled');}
+  });
+  var deptOpt=document.getElementById('dept-opt');if(deptOpt)deptOpt.textContent='(si concerné)';
+  var delegOpt=document.getElementById('deleg-opt');if(delegOpt)delegOpt.textContent='(si concerné)';
+  // Clear validation msg
+  var msg=document.getElementById('validation-msg');if(msg)msg.remove();
   handleType('');
 }
 
