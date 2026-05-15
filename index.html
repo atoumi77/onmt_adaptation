@@ -1074,59 +1074,57 @@ function submitForm(){
       body:   JSON.stringify(payload)
     });
 
-    // ── ÉTAPE 4 : Emails Web3Forms ───────────────────────────
-    var bodyAdmin =
-      '<h2 style="color:#111">Nouvelle demande ' + refId + '</h2>' +
-      '<table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">' +
-      '<tr><td style="padding:6px 14px;color:#666">Sujet</td><td style="padding:6px 14px"><b>' + payload.sujet + '</b></td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Demandeur</td><td style="padding:6px 14px">' + payload.nom + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Email</td><td style="padding:6px 14px">' + payload.email + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Tel</td><td style="padding:6px 14px">' + (payload.tel||'—') + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Poste</td><td style="padding:6px 14px">' + (payload.service||'—') + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Departement</td><td style="padding:6px 14px">' + (payload.dept||'—') + '</td></tr>' +
-      (payload.delegation ? '<tr><td style="padding:6px 14px;color:#666">Delegation</td><td style="padding:6px 14px">' + payload.delegation + '</td></tr>' : '') +
-      '<tr><td style="padding:6px 14px;color:#666">Type</td><td style="padding:6px 14px">' + (payload.typeLabel||payload.type) + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Deadline</td><td style="padding:6px 14px">' + payload.deadline + '</td></tr>' +
-      '<tr><td style="padding:6px 14px;color:#666">Description</td><td style="padding:6px 14px">' + payload.desc + '</td></tr>' +
-      (payload.notes ? '<tr><td style="padding:6px 14px;color:#666">Notes</td><td style="padding:6px 14px">' + payload.notes + '</td></tr>' : '') +
-      (driveLinksHtml ? '<tr><td style="padding:6px 14px;color:#007B55"><b>Pieces jointes Drive</b></td><td style="padding:6px 14px">' + driveLinksHtml + '</td></tr>' : '') +
-      '</table>';
+     // ── ÉTAPE 4 : Emails Web3Forms (texte simple) ──────────────
+     var msgAdmin =
+       '=== NOUVELLE DEMANDE ' + refId + ' ===\n\n' +
+       'Sujet      : ' + payload.sujet + '\n' +
+       'Demandeur  : ' + payload.nom + '\n' +
+       'Email      : ' + payload.email + '\n' +
+       'Tel        : ' + (payload.tel||'—') + '\n' +
+       'Poste      : ' + (payload.service||'—') + '\n' +
+       'Dept       : ' + (payload.dept||'—') + '\n' +
+       (payload.delegation ? 'Delegation : ' + payload.delegation + '\n' : '') +
+       'Type       : ' + (payload.typeLabel||payload.type) + '\n' +
+       'Deadline   : ' + payload.deadline + '\n\n' +
+       '--- Description ---\n' + payload.desc + '\n' +
+       (payload.notes ? '\n--- Notes ---\n' + payload.notes + '\n' : '') +
+       '\n================================';
 
-    var bodyUser =
-      '<p>Bonjour ' + payload.nom + ',</p>' +
-      '<p>Votre demande a bien ete enregistree sur la plateforme ONMT DA.</p>' +
-      '<p><b>Reference :</b> ' + refId + '</p>' +
-      '<p><b>Sujet :</b> ' + payload.sujet + '</p>' +
-      '<p><b>Deadline :</b> ' + payload.deadline + '</p>' +
-      '<p>Le Departement Marketing reviendra vers vous rapidement.</p>';
+     var msgUser =
+       'Bonjour ' + payload.nom + ',\n\n' +
+       'Votre demande a bien ete enregistree.\n\n' +
+       'Reference : ' + refId + '\n' +
+       'Sujet     : ' + payload.sujet + '\n' +
+       'Deadline  : ' + payload.deadline + '\n\n' +
+       'Le Departement Marketing reviendra vers vous rapidement.\n\n' +
+       'Office National Marocain du Tourisme\nDirection Marketing Strategique et Communication';
 
-    fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        access_key: W3F_KEY,
-        subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
-        from_name: payload.nom,
-        email: payload.email,
-        message: bodyAdmin,
-        is_html: true,
-        botcheck: false
-      })
-    }).catch(function(e){ console.warn('Email admin:', e); });
+     fetch('https://api.web3forms.com/submit', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+       body: JSON.stringify({
+         access_key: W3F_KEY,
+         subject: '[ONMT DA] ' + refId + ' — ' + payload.sujet,
+         from_name: payload.nom,
+         email: payload.email,
+         message: msgAdmin,
+         botcheck: false
+       })
+     }).catch(function(e){ console.warn('Email admin:', e); });
 
-    fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        access_key: W3F_KEY,
-        subject: 'Demande ' + refId + ' bien recue — ONMT DA',
-        from_name: 'ONMT Direction Artistique',
-        email: payload.email,
-        message: bodyUser,
-        is_html: true,
-        botcheck: false
-      })
-    }).catch(function(e){ console.warn('Email user:', e); });
+     fetch('https://api.web3forms.com/submit', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+       body: JSON.stringify({
+         access_key: W3F_KEY,
+         subject: 'Demande ' + refId + ' - ONMT Adaptation',
+         from_name: 'ONMT Direction Artistique',
+         email: payload.email,
+         message: msgUser,
+         botcheck: false
+       })
+     }).catch(function(e){ console.warn('Email user:', e); });
+
 
     // ── ÉTAPE 5 : Confirmation ────────────────────────────────
     btn.disabled = false;
